@@ -32,7 +32,7 @@ type DbTicker struct {
 	ReferenceCurrency currencies.Currency
 	Rate              float64
 	TimpeStamp        time.Time
-	isCalculated 		bool
+	isCalculated      bool
 }
 
 type DbManager struct {
