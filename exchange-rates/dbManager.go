@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"fmt"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -54,8 +55,10 @@ func NewDbManager(configuration DBConfiguration) *DbManager {
 }
 
 func (b *DbManager) connectDb(configuration DBConfiguration) *sql.DB {
-	dbinfo := fmt.Sprintf("user=%s password=%s dbname=%s sslmode=disable",
-		configuration.User, configuration.Password, configuration.Name)
+	dbinfo := "sslmode=disable"
+	// fmt.Sprintf("user=%s password=%s dbname=%s sslmode=disable",
+	// configuration.User, configuration.Password, configuration.Name)
+	fmt.Fprintf(os.Stderr, "!!!!!!!!!!!  dbinfo=%s", dbinfo)
 	db, err := sql.Open("postgres", dbinfo)
 	if err != nil {
 		log.Errorf("connectDb:DbManager:sql.Open %v", err.Error())
