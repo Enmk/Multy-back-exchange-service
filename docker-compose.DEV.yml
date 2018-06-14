@@ -1,10 +1,15 @@
-# Release image - service image is default
+# Image for development - service is built on-demand from the HOST machine most recent sources
 version: '3'
 services:
     exchange-service:
-        image: multy-back-exchange-info:latest
-        
-        restart: always
+        image: golang:1.9.4
+        container_name: multy-back-exchange-info.DEV
+        volumes:
+            - ~/go/src:/go/src
+        working_dir: /go/src/github.com/Appscrunch/Multy-back-exchange-service
+        command: make build run
+
+        restart: no
         ports:
           - "${EXCHANGE_INFO_SERVICE_HOST_PORT}:80"
         # links:
