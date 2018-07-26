@@ -7,6 +7,8 @@ import (
 
 	"github.com/Appscrunch/Multy-back-exchange-service/core"
 	"github.com/Appscrunch/Multy-back-exchange-service/exchange-rates"
+	"github.com/Appscrunch/Multy-back-exchange-service/server"
+
 	"github.com/KristinaEtc/config"
 	_ "github.com/KristinaEtc/slflog"
 )
@@ -60,6 +62,8 @@ func main() {
 
 	exchangeManger = exchangeRates.NewExchangeManager(configuration)
 	go exchangeManger.StartGetingData()
+
+	go server.ServeSocketIo(exchangeManger)
 
 	waitGroup.Wait()
 

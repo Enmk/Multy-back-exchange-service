@@ -6,11 +6,12 @@ import (
 
 	"sync"
 
+	"fmt"
+	"strconv"
+
 	"github.com/Appscrunch/Multy-back-exchange-service/core"
 	"github.com/Appscrunch/Multy-back-exchange-service/currencies"
 	"github.com/Appscrunch/Multy-back-exchange-service/stream/server"
-	"fmt"
-	"strconv"
 )
 
 type Exchange struct {
