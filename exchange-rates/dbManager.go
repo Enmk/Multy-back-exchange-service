@@ -14,7 +14,7 @@ import (
 	_ "github.com/lib/pq"
 )
 
-var log = slf.WithContext("exchange-rates")
+var log = slf.WithContext("DB")
 
 type DBConfiguration struct {
 	User     string `json:"user"`

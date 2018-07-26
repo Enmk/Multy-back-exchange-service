@@ -9,6 +9,7 @@ import (
 	"github.com/Appscrunch/Multy-back-exchange-service/server"
 
 	"github.com/KristinaEtc/config"
+	"github.com/KristinaEtc/slf"
 	_ "github.com/KristinaEtc/slflog"
 )
 
@@ -16,6 +17,8 @@ var manager = core.NewManager()
 var exchangeManger *exchangeRates.ExchangeManager
 var waitGroup = &sync.WaitGroup{}
 var configuration = core.ManagerConfiguration{}
+
+var log = slf.WithContext("main")
 
 //var configString = `{
 //		"targetCurrencies" : ["BTC", "ETH", "GOLOS", "BTS", "STEEM", "WAVES", "LTC", "BCH", "ETC", "DASH", "EOS"],
@@ -54,17 +57,23 @@ func main() {
 
 	waitGroup.Add(len(configuration.Exchanges) + 5)
 
+	log.Info("Starting DbManager...")
 	go manager.StartListen(configuration)
+	log.Info("...Ok")
 
+	log.Info("Starting ExchangeManger...")
 	exchangeManger = exchangeRates.NewExchangeManager(configuration)
 	go exchangeManger.StartGetingData()
+	log.Info("...Ok")
 
+	log.Info("Starting MarketSocketIoServer...")
 	marketServerConfig := server.MarketSocketIoServerConfig{
 		"localhost",
 		8088,
 	}
 	marketServer := server.NewMarketSocketIoServer(marketServerConfig)
 	go marketServer.Start(exchangeManger)
+	log.Info("...Ok")
 
 	waitGroup.Wait()
 }

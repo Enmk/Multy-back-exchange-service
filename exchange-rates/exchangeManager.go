@@ -135,7 +135,7 @@ func (b *ExchangeManager) StartGetingData() {
 		//	}
 
 		case response := <-responseCh:
-			fmt.Printf("got history %s,  %s %s %s \n", response.Exchange.String(), response.Pair.TargetCurrency.CurrencyCode(), response.Pair.ReferenceCurrency.CurrencyCode(), response.OhlcvData)
+			fmt.Printf("got history %s,  %s %s %v \n", response.Exchange.String(), response.Pair.TargetCurrency.CurrencyCode(), response.Pair.ReferenceCurrency.CurrencyCode(), response.OhlcvData)
 			if response.OhlcvData != nil {
 				b.addHistoryData(response)
 			}

@@ -14,6 +14,8 @@ import (
 	"github.com/Appscrunch/Multy-back-exchange-service/exchange-rates"
 	"github.com/graarh/golang-socketio"
 	"github.com/graarh/golang-socketio/transport"
+
+	_ "github.com/KristinaEtc/slflog"
 )
 
 type MockDataProvider struct {
@@ -65,7 +67,7 @@ func TestSocketIo(t *testing.T) {
 	}
 
 	var response MarketRateResponse
-	err = json.Unmarshal([]byte(strResponse), response)
+	err = json.Unmarshal([]byte(strResponse), &response)
 
 	if err != nil {
 		t.Errorf("Failed to unmarshal response as MarketRateResponse: %v\n%s", err, strResponse)

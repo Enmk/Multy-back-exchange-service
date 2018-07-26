@@ -6,7 +6,6 @@ See LICENSE for details
 package server
 
 import (
-	"log"
 	"net/http"
 	"strconv"
 	"time"
@@ -14,8 +13,12 @@ import (
 	"github.com/graarh/golang-socketio"
 	"github.com/graarh/golang-socketio/transport"
 
+	"github.com/KristinaEtc/slf"
+
 	"github.com/Appscrunch/Multy-back-exchange-service/exchange-rates"
 )
+
+var log = slf.WithContext("Market-SocketIoServer")
 
 type SocketIoConfig struct {
 	address string
@@ -75,7 +78,7 @@ func (self *MarketSocketIoServer) Start(dataProvider exchangeRates.MarketDataPro
 	handler := gosocketio.NewServer(transport.GetDefaultWebsocketTransport())
 
 	handler.On(gosocketio.OnConnection, func(c *gosocketio.Channel) {
-		log.Printf("Connected: %v from %v", c.Id(), c.Ip())
+		log.Debugf("Connected: %v from %v", c.Id(), c.Ip())
 
 		// c.Emit("/message", Message{10, "main", "using emit"})
 
@@ -84,12 +87,15 @@ func (self *MarketSocketIoServer) Start(dataProvider exchangeRates.MarketDataPro
 	})
 
 	handler.On(gosocketio.OnDisconnection, func(c *gosocketio.Channel) {
-		log.Printf("Disconnected: %v", c.Id())
+		log.Debugf("Disconnected: %v", c.Id())
 	})
 
 	handler.On("/get_rates", func(c *gosocketio.Channel, request MarketRateRequest) MarketRateResponse {
+		log = log.WithField("request:", "get_rates")
+
 		rawRates, err := dataProvider.GetRates(request.Date, request.Exchange, request.Reference, request.Currencies)
 		if err != nil {
+			log.WithError(err).Errorf("Failed to get rates with %v", request)
 			return MarketRateResponse{
 				Error: err,
 			}
@@ -100,6 +106,7 @@ func (self *MarketSocketIoServer) Start(dataProvider exchangeRates.MarketDataPro
 			rates[strconv.Itoa(int(ticker.Pair.TargetCurrency))] = ticker.Rate
 		}
 
+		log.Debugf("Resulting rates count: %v", len(rates))
 		return MarketRateResponse{
 			// Exchange:  exchange,
 			// Date:      date,
@@ -109,9 +116,12 @@ func (self *MarketSocketIoServer) Start(dataProvider exchangeRates.MarketDataPro
 	})
 
 	handler.On("/get_rates_history", func(c *gosocketio.Channel, request MarketRateHistoryRequest) MarketRateHistoryResponse {
+		log = log.WithField("request:", "get_rates_history")
+
 		// TODO: choose granularity based on From - To duration
 		rawHistory, err := dataProvider.GetHistoryRates(request.From, request.To, request.Exchange, request.Reference, request.Currencies)
 		if err != nil {
+			log.WithError(err).Errorf("Failed to get rates history with %v", request)
 			return MarketRateHistoryResponse{
 				Error: err,
 			}
@@ -128,6 +138,7 @@ func (self *MarketSocketIoServer) Start(dataProvider exchangeRates.MarketDataPro
 			rates[strconv.Itoa(int(ticker.Pair.TargetCurrency))] = ticker.Rate
 		}
 
+		log.Debugf("Resulting history size: %v", len(history))
 		return MarketRateHistoryResponse{
 			// Exchange:  exchange,
 			// Date:      date,
