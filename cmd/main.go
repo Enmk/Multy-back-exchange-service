@@ -2,7 +2,6 @@ package main
 
 import (
 	"sync"
-
 	"time"
 
 	"github.com/Appscrunch/Multy-back-exchange-service/core"
@@ -51,9 +50,6 @@ func main() {
 	configuration.HistoryEndDate = time.Now().UTC().Add(-3600)
 
 	dbConfig := core.DBConfiguration{}
-	// dbConfig.User = "postgres"
-	// dbConfig.Password = "postgres"
-	// dbConfig.Name = "test"
 	configuration.DBConfiguration = dbConfig
 
 	waitGroup.Add(len(configuration.Exchanges) + 5)
@@ -63,8 +59,12 @@ func main() {
 	exchangeManger = exchangeRates.NewExchangeManager(configuration)
 	go exchangeManger.StartGetingData()
 
-	go server.ServeSocketIo(exchangeManger)
+	marketServerConfig := server.MarketSocketIoServerConfig{
+		"localhost",
+		8088,
+	}
+	marketServer := server.NewMarketSocketIoServer(marketServerConfig)
+	go marketServer.Start(exchangeManger)
 
 	waitGroup.Wait()
-
 }

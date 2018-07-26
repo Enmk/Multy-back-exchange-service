@@ -81,7 +81,8 @@ SELECT ex.title AS exchange_title,
   WHERE ((r.exchange_id = ex.id) AND (r.target_id = tcr.id) AND (r.reference_id = rcr.id));
 
 
-create or replace function fill_rates() returns void
+create or replace
+function fill_rates() returns void
 	language plpgsql
 as $$
 BEGIN
@@ -117,7 +118,8 @@ $$
 ;
 
 -- Get exchange info at given point in time for given exchange from one currency to set of others
-create or replace function getrates(p_time_stamp timestamp with time zone, p_exchange_title character varying, p_target_code character varying, p_referencies_codes character varying[])
+create or replace
+function GetRates(time_start timestamp with time zone, time_stop timestamp with time zone, p_exchange_title character varying, p_target_code character varying, p_referencies_codes character varying[])
 	returns TABLE(o_exchnage_title character varying, o_target_code character varying, o_reference_code character varying, o_time_stamp timestamp without time zone, o_rate real)
 	language plpgsql
 as $$
@@ -125,7 +127,9 @@ BEGIN
 
       RETURN QUERY SELECT  DISTINCT on (reference_code) exchange_title as o_exchnage_title, target_code as o_target_code, reference_code as o_reference_code, time_stamp as o_time_stamp, rate as o_rate
 FROM rates_view
-WHERE time_stamp <= p_time_stamp -- add some kind of a window (a day?) limiting number of rows matching by time.
+WHERE
+	time_stamp >= time_start
+	and time_stamp <= time_stop -- add some kind of a window (a day?) limiting number of rows matching by time.
 	and exchange_title = p_exchange_title
 	and target_code = p_target_code
 	and reference_code = ANY(p_referencies_codes)

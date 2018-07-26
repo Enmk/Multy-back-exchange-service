@@ -110,12 +110,13 @@ func (b *DbManager) fillRateFromSA() {
 	}
 }
 
-func (b *DbManager) getRates(timeStamp time.Time, exchangeTitle string, targetCode string, refereciesCodes []string) []DbRate {
+func (b *DbManager) getRates(from time.Time, to time.Time, exchangeTitle string, targetCode string, refereciesCodes []string) ([]DbRate, error) {
 	var s = StringSlice{}
 	s = refereciesCodes
-	rows, err := b.db.Query("SELECT * from getRates($1, $2, $3, $4)", timeStamp, exchangeTitle, targetCode, s)
+	rows, err := b.db.Query("SELECT * from getRates($1, $2, $3, $4, $5)", from, to, exchangeTitle, targetCode, s)
 	if err != nil {
 		log.Errorf("DbManager:getRates:b.db.Query %v", err.Error())
+		return nil, err
 	}
 
 	var dbRates = []DbRate{}
@@ -142,7 +143,7 @@ func (b *DbManager) getRates(timeStamp time.Time, exchangeTitle string, targetCo
 		dbRates = append(dbRates, dbRate)
 	}
 	rows.Close()
-	return dbRates
+	return dbRates, nil
 }
 
 type StringSlice []string

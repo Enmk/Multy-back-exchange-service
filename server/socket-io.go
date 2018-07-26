@@ -17,33 +17,29 @@ import (
 	"github.com/Appscrunch/Multy-back-exchange-service/exchange-rates"
 )
 
-type SocketIoConfig {
+type SocketIoConfig struct {
 	address string
 }
 
-type rateData map[string]float64
-type rateHistory map[time.Time]rateData
+type RateData map[string]float64
+type RateHistory map[time.Time]RateData
 
-type marketResponse struct {
-	Error *error `json:"error"`
-}
-
-type marketRateRequest struct {
+type MarketRateRequest struct {
 	Exchange   string    `json:"exchange" binding:"required"`
 	Date       time.Time `json:"from" time_format:"RFC3339"`
 	Reference  string    `json:"reference_currency_id" binding:"required"`
 	Currencies []string  `json:"currency_ids" binding:"required"`
 }
 
-type marketRateResponse struct {
-	marketResponse
+type MarketRateResponse struct {
+	Error error `json:"error"`
 	// exchange  string    `json:"exchange" binding:"required"`
 	// date      time.Time `json:"date" time_format:"RFC3339" binding:"required"`
 	// reference string    `json:"reference_currency_id" binding:"required"`
-	Rates rateData `json:"rates" binding:"required"`
+	Rates RateData `json:"rates" binding:"required"`
 }
 
-type marketRateHistoryRequest struct {
+type MarketRateHistoryRequest struct {
 	Exchange   string    `json:"exchange" binding:"required"`
 	From       time.Time `json:"from" time_format:"RFC3339"`
 	To         time.Time `json:"to" time_format:"RFC3339"`
@@ -51,19 +47,34 @@ type marketRateHistoryRequest struct {
 	Currencies []string  `json:"currency_ids" binding:"required"`
 }
 
-type marketRateHistoryResponse struct {
-	marketResponse
+type MarketRateHistoryResponse struct {
+	Error error `json:"error"`
 	// exchange  string      `json:"exchange" binding:"required"`
 	// from      time.Time   `json:"date" time_format:"RFC3339" binding:"required"`
 	// to        time.Time   `json:"to" time_format:"RFC3339" binding:"required"`
 	// reference string      `json:"reference_currency_id" binding:"required"`
-	History rateHistory `json:"history" binding:"required"`
+	History RateHistory `json:"history" binding:"required"`
 }
 
-func ServeSocketIo(exchangeManager *exchangeRates.ExchangeManager) {
-	server := gosocketio.NewServer(transport.GetDefaultWebsocketTransport())
+type MarketSocketIoServerConfig struct {
+	Host string
+	Port int
+}
+type MarketSocketIoServer struct {
+	// TODO: add logging
+	serveMux *http.ServeMux
+	server   *http.Server
+	config   MarketSocketIoServerConfig
+}
 
-	server.On(gosocketio.OnConnection, func(c *gosocketio.Channel) {
+func NewMarketSocketIoServer(config MarketSocketIoServerConfig) *MarketSocketIoServer {
+	return &MarketSocketIoServer{nil, nil, config}
+}
+
+func (self *MarketSocketIoServer) Start(dataProvider exchangeRates.MarketDataProvider) error {
+	handler := gosocketio.NewServer(transport.GetDefaultWebsocketTransport())
+
+	handler.On(gosocketio.OnConnection, func(c *gosocketio.Channel) {
 		log.Printf("Connected: %v from ", c.Id(), c.Ip())
 
 		// c.Emit("/message", Message{10, "main", "using emit"})
@@ -72,24 +83,24 @@ func ServeSocketIo(exchangeManager *exchangeRates.ExchangeManager) {
 		// c.BroadcastTo("test", "/message", Message{10, "main", "using broadcast"})
 	})
 
-	server.On(gosocketio.OnDisconnection, func(c *gosocketio.Channel) {
+	handler.On(gosocketio.OnDisconnection, func(c *gosocketio.Channel) {
 		log.Printf("Disconnected: %v", c.Id())
 	})
 
-	server.On("/get_market_rate", func(c *gosocketio.Channel, request marketRateRequest) marketRateResponse {
-		rawRates, err := exchangeManager.GetRates(date, exchange, reference, currencyIds)
+	handler.On("/get_rates", func(c *gosocketio.Channel, request MarketRateRequest) MarketRateResponse {
+		rawRates, err := dataProvider.GetRates(request.Date, request.Exchange, request.Reference, request.Currencies)
 		if err != nil {
-			return exchangeRateResponse {
+			return MarketRateResponse{
 				Error: err,
 			}
 		}
 
-		var rates rateData
+		var rates RateData
 		for _, ticker := range rawRates {
 			rates[strconv.Itoa(int(ticker.Pair.TargetCurrency))] = ticker.Rate
 		}
 
-		return exchangeRateResponse {
+		return MarketRateResponse{
 			// Exchange:  exchange,
 			// Date:      date,
 			// Reference: reference,
@@ -97,34 +108,44 @@ func ServeSocketIo(exchangeManager *exchangeRates.ExchangeManager) {
 		}
 	})
 
-	server.On("/get_market_rate", func(c *gosocketio.Channel, request marketRateHistoryRequest) marketRateResponse {
-		rawHistory, err := self.exchangeManager.GetHistoryRates(request.from, request.to, request.exchange, request.reference, request.currencies)
+	handler.On("/get_rates_history", func(c *gosocketio.Channel, request MarketRateHistoryRequest) MarketRateHistoryResponse {
+		// TODO: choose granularity based on From - To duration
+		rawHistory, err := dataProvider.GetHistoryRates(request.From, request.To, request.Exchange, request.Reference, request.Currencies)
 		if err != nil {
-			return marketRateResponse {
-				Error: err
+			return MarketRateHistoryResponse{
+				Error: err,
 			}
 		}
 
-		var history rateHistory
+		var history RateHistory
 		for _, ticker := range rawHistory {
+			// TODO: trim timestamp according to granularity to force more values in same bucket.
 			rates := history[ticker.TimpeStamp]
 			if rates == nil {
-				history[ticker.TimpeStamp] = rateData{}
+				history[ticker.TimpeStamp] = RateData{}
 				rates = history[ticker.TimpeStamp]
 			}
 			rates[strconv.Itoa(int(ticker.Pair.TargetCurrency))] = ticker.Rate
 		}
 
-		return marketRateHistoryResponse {
+		return MarketRateHistoryResponse{
 			// Exchange:  exchange,
 			// Date:      date,
 			// Reference: reference,
-			History: history
+			History: history,
 		}
 	})
 
-	serveMux := http.NewServeMux()
-	serveMux.Handle("/socket.io/v1", server)
+	self.serveMux = http.NewServeMux()
+	self.serveMux.Handle("/socket.io", handler)
 
-	log.Panic(http.ListenAndServe(":3811", serveMux))
+	addr := self.config.Host + ":" + strconv.Itoa(self.config.Port)
+	self.server = &http.Server{Addr: addr, Handler: handler}
+
+	return self.server.ListenAndServe()
+}
+
+// Stops the server
+func (self *MarketSocketIoServer) Stop() {
+	self.server.Close()
 }
