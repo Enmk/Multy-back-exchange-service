@@ -43,13 +43,15 @@ func TestSocketIo(t *testing.T) {
 	go marketServer.Start(mockDataProvider)
 
 	serverURL := gosocketio.GetUrl(config.Host, config.Port, false)
+	t.Logf("Dialing server on %s ...", serverURL)
+
 	marketClient, err := gosocketio.Dial(serverURL, transport.GetDefaultWebsocketTransport())
 	if err != nil {
 		t.Errorf("Can't dial to server: %v", err)
 		return
 	}
 
-	strResponse, err := marketClient.Ack("get_rates", MarketRateRequest{
+	strResponse, err := marketClient.Ack("/get_rates", MarketRateRequest{
 		"exchange",
 		time.Now(),
 		"FOO",

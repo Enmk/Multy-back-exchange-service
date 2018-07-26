@@ -75,7 +75,7 @@ func (self *MarketSocketIoServer) Start(dataProvider exchangeRates.MarketDataPro
 	handler := gosocketio.NewServer(transport.GetDefaultWebsocketTransport())
 
 	handler.On(gosocketio.OnConnection, func(c *gosocketio.Channel) {
-		log.Printf("Connected: %v from ", c.Id(), c.Ip())
+		log.Printf("Connected: %v from %v", c.Id(), c.Ip())
 
 		// c.Emit("/message", Message{10, "main", "using emit"})
 
