@@ -452,7 +452,7 @@ func NewCurrencyWithCode(currencyCodeString string) Currency {
 	}
 
 	if currency, ok := currencies[strings.ToUpper(currencyCodeString)]; ok {
-	 return currency
+		return currency
 	} else {
 		return NotAplicable
 	}

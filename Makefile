@@ -14,7 +14,7 @@ run: build
 	cd cmd && ./$(NAME) && ../
 
 test: build
-	go test ./...
+	go test -v ./...
 
 setup:
 	go get -u github.com/kardianos/govendor

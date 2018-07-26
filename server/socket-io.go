@@ -24,39 +24,39 @@ type SocketIoConfig struct {
 	address string
 }
 
-type RateData map[string]float64
-type RateHistory map[time.Time]RateData
+type rateData map[string]float64
+type rateHistory map[time.Time]rateData
 
-type MarketRateRequest struct {
+type marketRateRequest struct {
 	Exchange   string    `json:"exchange" binding:"required"`
-	Date       time.Time `json:"from" time_format:"RFC3339"`
+	Date       time.Time `json:"from" time_format:"RFC3339" binding:"required"`
 	Reference  string    `json:"reference_currency_id" binding:"required"`
 	Currencies []string  `json:"currency_ids" binding:"required"`
 }
 
-type MarketRateResponse struct {
+type marketRateResponse struct {
 	Error error `json:"error"`
 	// exchange  string    `json:"exchange" binding:"required"`
 	// date      time.Time `json:"date" time_format:"RFC3339" binding:"required"`
 	// reference string    `json:"reference_currency_id" binding:"required"`
-	Rates RateData `json:"rates" binding:"required"`
+	Rates rateData `json:"rates" binding:"required"`
 }
 
-type MarketRateHistoryRequest struct {
+type marketRateHistoryRequest struct {
 	Exchange   string    `json:"exchange" binding:"required"`
-	From       time.Time `json:"from" time_format:"RFC3339"`
-	To         time.Time `json:"to" time_format:"RFC3339"`
+	From       time.Time `json:"from" time_format:"RFC3339" binding:"required"`
+	To         time.Time `json:"to" time_format:"RFC3339" binding:"required"`
 	Reference  string    `json:"reference_currency_id" binding:"required"`
 	Currencies []string  `json:"currency_ids" binding:"required"`
 }
 
-type MarketRateHistoryResponse struct {
+type marketRateHistoryResponse struct {
 	Error error `json:"error"`
 	// exchange  string      `json:"exchange" binding:"required"`
 	// from      time.Time   `json:"date" time_format:"RFC3339" binding:"required"`
 	// to        time.Time   `json:"to" time_format:"RFC3339" binding:"required"`
 	// reference string      `json:"reference_currency_id" binding:"required"`
-	History RateHistory `json:"history" binding:"required"`
+	History rateHistory `json:"history" binding:"required"`
 }
 
 type MarketSocketIoServerConfig struct {
@@ -79,70 +79,59 @@ func (self *MarketSocketIoServer) Start(dataProvider exchangeRates.MarketDataPro
 
 	handler.On(gosocketio.OnConnection, func(c *gosocketio.Channel) {
 		log.Debugf("Connected: %v from %v", c.Id(), c.Ip())
-
-		// c.Emit("/message", Message{10, "main", "using emit"})
-
-		// c.Join("test")
-		// c.BroadcastTo("test", "/message", Message{10, "main", "using broadcast"})
 	})
 
 	handler.On(gosocketio.OnDisconnection, func(c *gosocketio.Channel) {
 		log.Debugf("Disconnected: %v", c.Id())
 	})
 
-	handler.On("/get_rates", func(c *gosocketio.Channel, request MarketRateRequest) MarketRateResponse {
+	handler.On("/get_rates", func(c *gosocketio.Channel, request marketRateRequest) marketRateResponse {
 		log = log.WithField("request:", "get_rates")
 
 		rawRates, err := dataProvider.GetRates(request.Date, request.Exchange, request.Reference, request.Currencies)
 		if err != nil {
 			log.WithError(err).Errorf("Failed to get rates with %v", request)
-			return MarketRateResponse{
+			return marketRateResponse{
 				Error: err,
 			}
 		}
 
-		var rates RateData
+		rates := make(rateData)
 		for _, ticker := range rawRates {
 			rates[strconv.Itoa(int(ticker.Pair.TargetCurrency))] = ticker.Rate
 		}
 
 		log.Debugf("Resulting rates count: %v", len(rates))
-		return MarketRateResponse{
-			// Exchange:  exchange,
-			// Date:      date,
-			// Reference: reference,
+		return marketRateResponse{
 			Rates: rates,
 		}
 	})
 
-	handler.On("/get_rates_history", func(c *gosocketio.Channel, request MarketRateHistoryRequest) MarketRateHistoryResponse {
+	handler.On("/get_rates_history", func(c *gosocketio.Channel, request marketRateHistoryRequest) marketRateHistoryResponse {
 		log = log.WithField("request:", "get_rates_history")
 
 		// TODO: choose granularity based on From - To duration
 		rawHistory, err := dataProvider.GetHistoryRates(request.From, request.To, request.Exchange, request.Reference, request.Currencies)
 		if err != nil {
 			log.WithError(err).Errorf("Failed to get rates history with %v", request)
-			return MarketRateHistoryResponse{
+			return marketRateHistoryResponse{
 				Error: err,
 			}
 		}
 
-		var history RateHistory
+		history := make(rateHistory)
 		for _, ticker := range rawHistory {
 			// TODO: trim timestamp according to granularity to force more values in same bucket.
 			rates := history[ticker.TimpeStamp]
 			if rates == nil {
-				history[ticker.TimpeStamp] = RateData{}
+				history[ticker.TimpeStamp] = make(rateData)
 				rates = history[ticker.TimpeStamp]
 			}
 			rates[strconv.Itoa(int(ticker.Pair.TargetCurrency))] = ticker.Rate
 		}
 
 		log.Debugf("Resulting history size: %v", len(history))
-		return MarketRateHistoryResponse{
-			// Exchange:  exchange,
-			// Date:      date,
-			// Reference: reference,
+		return marketRateHistoryResponse{
 			History: history,
 		}
 	})

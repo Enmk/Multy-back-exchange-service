@@ -54,7 +54,7 @@ type Ticker struct {
 	Pair         currencies.CurrencyPair
 	Rate         float64
 	TimpeStamp   time.Time
-	isCalculated bool
+	IsCalculated bool
 }
 
 func (b *Ticker) symbol() string {
@@ -129,7 +129,7 @@ func (b *ExchangeManager) StartGetingData() {
 		//	for _, exx := range ex {
 		//	}	//fmt.Println("received ex", exx.name, exx.Tickers)
 		//	for _, v := range exx.Tickers {
-		//		if v.isCalculated {
+		//		if v.IsCalculated {
 		//			fmt.Println(exx.name, v.symbol(), v.Rate)
 		//		}
 		//	}
@@ -226,7 +226,7 @@ func (b *ExchangeManager) calculateAllTickers(targetCodes []string, referenceCod
 						ticker.Rate = rate
 						ticker.Pair.TargetCurrency = pair.TargetCurrency
 						ticker.Pair.ReferenceCurrency = pair.ReferenceCurrency
-						ticker.isCalculated = true
+						ticker.IsCalculated = true
 						newTickers[ticker.symbol()] = ticker
 					} else {
 						log.Errorf("calculateAllTickers: exchange ticket is nil %v %v %v ", exchangePair.TargetCurrency.CurrencyCode(), exchangePair.ReferenceCurrency.CurrencyCode(), exchange.name)
@@ -366,7 +366,7 @@ func (b *ExchangeManager) fillDb() {
 					dbTicker.ReferenceCurrency = ticker.Pair.ReferenceCurrency
 					dbTicker.TargetCurrency = ticker.Pair.TargetCurrency
 					dbTicker.Rate = ticker.Rate
-					dbTicker.isCalculated = ticker.isCalculated
+					dbTicker.isCalculated = ticker.IsCalculated
 					dbExchange.Tickers = append(dbExchange.Tickers, dbTicker)
 					//fmt.Println(dbTicker.TargetCurrency.CurrencyCode(), dbTicker.Rate)
 				}
