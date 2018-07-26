@@ -73,4 +73,9 @@ func TestSocketIo(t *testing.T) {
 		t.Errorf("Failed to unmarshal response as MarketRateResponse: %v\n%s", err, strResponse)
 		return
 	}
+
+	if len(response.Rates) != len(mockDataProvider.Tickers) {
+		t.Errorf("Invalid response size: expected %v got %v", len(response.Rates), len(mockDataProvider.Tickers))
+		return
+	}
 }
